@@ -601,6 +601,7 @@ def map_pl_locations(pick_list, item_mapper, delivery_note, sales_order=None):
 			dn_item.qty = flt(location.picked_qty) / (flt(location.conversion_factor) or 1)
 			dn_item.batch_no = location.batch_no
 			dn_item.serial_no = location.serial_no
+			dn_item.pl_detail = location.name
 
 			update_delivery_note_item(source_doc, dn_item, delivery_note)
 
