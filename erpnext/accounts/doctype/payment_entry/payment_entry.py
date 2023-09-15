@@ -175,27 +175,30 @@ class PaymentEntry(AccountsController):
 					frappe.throw(fail_message.format(d.idx))
 
 	def validate_allocated_amount_with_latest_data(self):
-		latest_references = get_outstanding_reference_documents(
-			{
-				"posting_date": self.posting_date,
-				"company": self.company,
-				"party_type": self.party_type,
-				"payment_type": self.payment_type,
-				"party": self.party,
-				"party_account": self.paid_from if self.payment_type == "Receive" else self.paid_to,
-				"get_outstanding_invoices": True,
-				"get_orders_to_be_billed": True,
-			}
-		)
+#		latest_references = get_outstanding_reference_documents(
+#			{
+#				"posting_date": self.posting_date,
+#				"company": self.company,
+#				"party_type": self.party_type,
+#				"payment_type": self.payment_type,
+#				"party": self.party,
+#				"party_account": self.paid_from if self.payment_type == "Receive" else self.paid_to,
+#				"get_outstanding_invoices": True,
+#				"get_orders_to_be_billed": True,
+#			}
+#		)
 
 		# Group latest_references by (voucher_type, voucher_no)
-		latest_lookup = {}
-		for d in latest_references:
-			d = frappe._dict(d)
-			latest_lookup.update({(d.voucher_type, d.voucher_no): d})
+#		latest_lookup = {}
+#		for d in latest_references:
+#			d = frappe._dict(d)
+#			latest_lookup.update({(d.voucher_type, d.voucher_no): d})
 
 		for d in self.get("references"):
-			latest = latest_lookup.get((d.reference_doctype, d.reference_name))
+#			latest = latest_lookup.get((d.reference_doctype, d.reference_name))
+			latest = None
+			if frappe.db.exists(d.reference_doctype, {"name":d.reference_name,"outstanding_amount":("!=",0)}):
+				latest = frappe.get_doc(d.reference_doctype, d.reference_name)
 
 			# The reference has already been fully paid
 			if not latest:
@@ -203,7 +206,8 @@ class PaymentEntry(AccountsController):
 					_("{0} {1} has already been fully paid.").format(_(d.reference_doctype), d.reference_name)
 				)
 			# The reference has already been partly paid
-			elif latest.outstanding_amount < latest.invoice_amount and flt(
+#			elif latest.outstanding_amount < latest.invoice_amount and flt(
+			elif latest.outstanding_amount < latest.base_grand_total and flt(
 				d.outstanding_amount, d.precision("outstanding_amount")
 			) != flt(latest.outstanding_amount, d.precision("outstanding_amount")):
 
@@ -270,7 +274,7 @@ class PaymentEntry(AccountsController):
 				frappe.throw(_("Party is mandatory"))
 
 			_party_name = (
-				"title" if self.party_type in ("Student", "Shareholder") else self.party_type.lower() + "_name"
+				"title" if self.party_type in ("Student", "Shareholder") else self.party_type.lower().replace(' ','_') + "_name"
 			)
 			self.party_name = frappe.db.get_value(self.party_type, self.party, _party_name)
 
@@ -1425,7 +1429,7 @@ def get_outstanding_reference_documents(args):
 
 		# Get negative outstanding sales /purchase invoices
 		negative_outstanding_invoices = []
-		if args.get("party_type") not in ["Student", "Employee"] and not args.get("voucher_no"):
+		if args.get("party_type") not in ["Student", "Employee","Others Receivable","Others Payable"] and not args.get("voucher_no"):
 			negative_outstanding_invoices = get_negative_outstanding_invoices(
 				args.get("party_type"),
 				args.get("party"),
@@ -1437,7 +1441,7 @@ def get_outstanding_reference_documents(args):
 
 	# Get all SO / PO which are not fully billed or against which full advance not paid
 	orders_to_be_billed = []
-	if args.get("get_orders_to_be_billed") and args.get("party_type") != "Student":
+	if args.get("get_orders_to_be_billed") and args.get("party_type") not in ("Student","Others Receivable","Others Payable"):
 		orders_to_be_billed = get_orders_to_be_billed(
 			args.get("posting_date"),
 			args.get("party_type"),
@@ -1462,7 +1466,7 @@ def get_outstanding_reference_documents(args):
 			_(
 				"No outstanding {0} found for the {1} {2} which qualify the filters you have specified."
 			).format(
-				_(ref_document_type), _(args.get("party_type")).lower(), frappe.bold(args.get("party"))
+				_(ref_document_type), _(args.get("party_type")).lower().replace(' ','_'), frappe.bold(args.get("party"))
 			)
 		)
 
@@ -1679,7 +1683,7 @@ def get_party_details(company, party_type, party, date, cost_center=None):
 	account_currency = get_account_currency(party_account)
 	account_balance = get_balance_on(party_account, date, cost_center=cost_center)
 	_party_name = (
-		"title" if party_type in ("Student", "Shareholder") else party_type.lower() + "_name"
+		"title" if party_type in ("Student", "Shareholder") else party_type.lower().replace(' ','_') + "_name"
 	)
 	party_name = frappe.db.get_value(party_type, party, _party_name)
 	party_balance = get_balance_on(party_type=party_type, party=party, cost_center=cost_center)
@@ -2137,7 +2141,7 @@ def set_party_account(dt, dn, doc, party_type):
 	elif dt == "Gratuity":
 		party_account = doc.payable_account
 	else:
-		party_account = get_party_account(party_type, doc.get(party_type.lower()), doc.company)
+		party_account = get_party_account(party_type, doc.get(party_type.lower().replace(' ','_')), doc.company)
 	return party_account
 
 

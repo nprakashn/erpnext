@@ -108,33 +108,41 @@ class ShippingRule(Document):
 				)
 
 	def add_shipping_rule_to_tax_table(self, doc, shipping_amount):
-		shipping_charge = {
-			"charge_type": "Actual",
-			"account_head": self.account,
-			"cost_center": self.cost_center,
-		}
-		if self.shipping_rule_type == "Selling":
-			# check if not applied on purchase
-			if not doc.meta.get_field("taxes").options == "Sales Taxes and Charges":
-				frappe.throw(_("Shipping rule only applicable for Selling"))
-			shipping_charge["doctype"] = "Sales Taxes and Charges"
-		else:
-			# check if not applied on sales
-			if not doc.meta.get_field("taxes").options == "Purchase Taxes and Charges":
-				frappe.throw(_("Shipping rule only applicable for Buying"))
+		if doc.up_sales_channel != "Shopify":
+			account_head = self.account
+			cost_center_head = self.cost_center
+			if doc.up_sales_channel is not None and len(doc.up_sales_channel) > 0:
+			    account_name,cost_center = frappe.get_value('Freight Account Settings', {'sales_channel': doc.up_sales_channel},['account_no','cost_center'])
+			    if account_name is not None:
+			        account_head = account_name
+			        cost_center_head = cost_center
+			shipping_charge = {
+				"charge_type": "Actual",
+				"account_head": account_head,
+				"cost_center": cost_center_head,
+			}
+			if self.shipping_rule_type == "Selling":
+				# check if not applied on purchase
+				if not doc.meta.get_field("taxes").options == "Sales Taxes and Charges":
+					frappe.throw(_("Shipping rule only applicable for Selling"))
+				shipping_charge["doctype"] = "Sales Taxes and Charges"
+			else:
+				# check if not applied on sales
+				if not doc.meta.get_field("taxes").options == "Purchase Taxes and Charges":
+					frappe.throw(_("Shipping rule only applicable for Buying"))
 
-			shipping_charge["doctype"] = "Purchase Taxes and Charges"
-			shipping_charge["category"] = "Valuation and Total"
-			shipping_charge["add_deduct_tax"] = "Add"
+				shipping_charge["doctype"] = "Purchase Taxes and Charges"
+				shipping_charge["category"] = "Valuation and Total"
+				shipping_charge["add_deduct_tax"] = "Add"
 
-		existing_shipping_charge = doc.get("taxes", filters=shipping_charge)
-		if existing_shipping_charge:
-			# take the last record found
-			existing_shipping_charge[-1].tax_amount = shipping_amount
-		else:
-			shipping_charge["tax_amount"] = shipping_amount
-			shipping_charge["description"] = self.label
-			doc.append("taxes", shipping_charge)
+			existing_shipping_charge = doc.get("taxes", filters=shipping_charge)
+			if existing_shipping_charge:
+				# take the last record found
+				existing_shipping_charge[-1].description = self.label
+			else:
+				shipping_charge["tax_amount"] = shipping_amount
+				shipping_charge["description"] = self.label
+				doc.append("taxes", shipping_charge)
 
 	def sort_shipping_rule_conditions(self):
 		"""Sort Shipping Rule Conditions based on increasing From Value"""

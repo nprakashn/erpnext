@@ -281,17 +281,38 @@ def round_off_debit_credit(gl_map):
 	if gl_map[0]["voucher_type"] in ("Journal Entry", "Payment Entry"):
 		allowance = 5.0 / (10**precision)
 	else:
-		allowance = 0.5
+		allowance = 0.99
 
-	if abs(debit_credit_diff) > allowance:
-		frappe.throw(
-			_("Debit and Credit not equal for {0} #{1}. Difference is {2}.").format(
-				gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff
-			)
-		)
+	# if abs(debit_credit_diff) > allowance:
+	# 	frappe.throw(
+	# 		_("Debit and Credit not equal for {0} #{1}. Difference is {2}.").format(
+	# 			gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff
+	# 		)
+	# 	)
 
-	elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
-		make_round_off_gle(gl_map, debit_credit_diff, precision)
+	# elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+	# 	make_round_off_gle(gl_map, debit_credit_diff, precision)
+
+	if gl_map[0]["voucher_type"] in ("Sales Invoice"):
+		sales_channel,currency = frappe.db.get_value('Sales Invoice', gl_map[0].voucher_no, ['up_sales_channel', 'currency'])		
+		if abs(debit_credit_diff) >= allowance and sales_channel == 'Amazon Seller Central' and currency != 'USD':
+			if abs(debit_credit_diff) < 5.00:
+				from upro_erp_integ.uproerpinteg.amazon_seller_central import make_exchange_off_gle
+				make_exchange_off_gle(gl_map, debit_credit_diff, precision)
+			else:                
+				frappe.throw(_("Debit and Credit not equal for {0} #{1}. Difference is {2}.").format(gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff))
+
+		elif abs(debit_credit_diff) >= allowance and sales_channel != 'Amazon Seller Central':
+			frappe.throw(_("Debit and Credit not equal for {0} #{1}. Difference is {2}.").format(gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff))
+
+		elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+			make_round_off_gle(gl_map, debit_credit_diff, precision)
+	else:
+		if abs(debit_credit_diff) >= allowance:
+			frappe.throw(_("Debit and Credit not equal for {0} #{1}. Difference is {2}.").format(gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff))
+
+		elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+			make_round_off_gle(gl_map, debit_credit_diff, precision)
 
 
 def make_round_off_gle(gl_map, debit_credit_diff, precision):

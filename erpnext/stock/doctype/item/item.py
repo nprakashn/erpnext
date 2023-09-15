@@ -479,7 +479,7 @@ class Item(Document):
 			self.set_last_purchase_rate(new_name)
 			self.recalculate_bin_qty(new_name)
 
-		for dt in ("Sales Taxes and Charges", "Purchase Taxes and Charges"):
+		for dt in ("Purchase Taxes and Charges"):
 			for d in frappe.db.sql(
 				"""select name, item_wise_tax_detail from `tab{0}`
 					where ifnull(item_wise_tax_detail, '') != ''""".format(
@@ -496,6 +496,7 @@ class Item(Document):
 					frappe.db.set_value(
 						dt, d.name, "item_wise_tax_detail", json.dumps(item_wise_tax_detail), update_modified=False
 					)
+		frappe.enqueue("upro_erp.custom.item_rename",old_name = old_name, new_name = new_name, queue="long")
 
 	def delete_old_bins(self, old_name):
 		frappe.db.delete("Bin", {"item_code": old_name})

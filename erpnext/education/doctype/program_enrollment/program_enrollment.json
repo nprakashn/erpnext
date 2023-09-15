@@ -49,6 +49,7 @@
   {
    "fieldname": "student_category",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Student Category",
    "options": "Student Category"
   },
@@ -56,6 +57,7 @@
    "allow_on_submit": 1,
    "fieldname": "student_batch_name",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_global_search": 1,
    "label": "Student Batch",
    "options": "Student Batch Name"
@@ -64,6 +66,7 @@
    "allow_on_submit": 1,
    "fieldname": "school_house",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "School House",
    "options": "School House"
   },
@@ -83,15 +86,16 @@
   {
    "fieldname": "academic_year",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Academic Year",
-   "options": "Academic Year",
-   "reqd": 1
+   "options": "Academic Year"
   },
   {
    "fieldname": "academic_term",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Academic Term",
    "options": "Academic Term"
   },
@@ -107,6 +111,7 @@
    "description": "Check this if the Student is residing at the Institute's Hostel.",
    "fieldname": "boarding_student",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Boarding Student"
   },
   {
@@ -114,12 +119,14 @@
    "collapsible_depends_on": "vehicle_no",
    "fieldname": "transportation",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Transportation"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "mode_of_transportation",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Mode of Transportation",
    "options": "\nWalking\nInstitute's Bus\nPublic Transport\nSelf-Driving Vehicle\nPick/Drop by Guardian"
   },
@@ -131,6 +138,7 @@
    "allow_on_submit": 1,
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Vehicle/Bus Number"
   },
   {
@@ -149,11 +157,13 @@
    "collapsible": 1,
    "fieldname": "section_break_7",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Fees"
   },
   {
    "fieldname": "fees",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Fees",
    "options": "Program Fee"
   },
@@ -176,7 +186,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2020-09-15 18:12:11.988565",
+ "modified": "2023-05-17 15:43:52.766076",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Program Enrollment",

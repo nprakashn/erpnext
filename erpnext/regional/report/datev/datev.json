@@ -9,14 +9,24 @@
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "modified": "2021-04-06 12:23:00.379517",
+ "modified": "2023-06-14 03:09:04.296607",
  "modified_by": "Administrator",
  "module": "Regional",
  "name": "DATEV",
  "owner": "Administrator",
- "prepared_report": 0,
+ "prepared_report": 1,
  "ref_doctype": "GL Entry",
  "report_name": "DATEV",
  "report_type": "Script Report",
- "roles": []
+ "roles": [
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Auditor"
+  }
+ ]
 }

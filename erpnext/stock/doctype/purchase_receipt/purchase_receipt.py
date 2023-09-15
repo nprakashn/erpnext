@@ -476,9 +476,11 @@ class PurchaseReceipt(BuyingController):
 						if self.is_return or flt(d.item_tax_amount):
 							loss_account = expenses_included_in_valuation
 						else:
-							loss_account = (
-								self.get_company_default("default_expense_account", ignore_validation=True) or stock_rbnb
-							)
+							# loss_account = (
+							# 	self.get_company_default("default_expense_account", ignore_validation=True) or stock_rbnb
+							# )
+							cogs_account = "1-220-5400 - Purchase Price Variance - UPIL"
+							loss_account = cogs_account
 
 						cost_center = d.cost_center or frappe.get_cached_value(
 							"Company", self.company, "cost_center"

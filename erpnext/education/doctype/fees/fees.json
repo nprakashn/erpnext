@@ -78,6 +78,7 @@
   {
    "fieldname": "fee_schedule",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_global_search": 1,
    "label": "Fee Schedule",
    "options": "Fee Schedule",
@@ -338,9 +339,10 @@
    "fieldtype": "Column Break"
   }
  ],
+ "in_create": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2020-08-05 14:05:47.728409",
+ "modified": "2023-05-17 15:53:06.442471",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Fees",
@@ -386,6 +388,7 @@
    "write": 1
   }
  ],
+ "read_only": 1,
  "restrict_to_domain": "Education",
  "search_fields": "student, student_name",
  "show_name_in_global_search": 1,

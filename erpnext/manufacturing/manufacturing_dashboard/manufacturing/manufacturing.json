@@ -45,6 +45,10 @@
   {
    "chart": "Job Card Analysis",
    "width": "Full"
+  },
+  {
+   "chart": "Work Order Summary",
+   "width": "Half"
   }
  ],
  "creation": "2020-07-08 22:40:22.626607",
@@ -54,8 +58,8 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2020-07-09 12:39:39.455039",
- "modified_by": "Administrator",
+ "modified": "2023-07-12 08:05:00.585163",
+ "modified_by": "bkosmal@ultrapro.com",
  "module": "Manufacturing",
  "name": "Manufacturing",
  "owner": "Administrator"

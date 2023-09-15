@@ -441,6 +441,10 @@ class StatusUpdater(Document):
 	def _update_percent_field(self, args, update_modified=True):
 		"""Update percent field in parent transaction"""
 
+		if args["target_parent_dt"] == "Delivery Note" and args["name"] is None and self.is_return == 1:
+			args["name"] = self.name
+
+
 		self._update_modified(args, update_modified)
 
 		if args.get("target_parent_field"):

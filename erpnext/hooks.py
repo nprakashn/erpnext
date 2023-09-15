@@ -373,11 +373,11 @@ doc_events = {
 			"erpnext.regional.create_transaction_log",
 			"erpnext.regional.italy.utils.sales_invoice_on_submit",
 			"erpnext.regional.saudi_arabia.utils.create_qr_code",
-			"erpnext.erpnext_integrations.taxjar_integration.create_transaction",
+			# "erpnext.erpnext_integrations.taxjar_integration.create_transaction",
 		],
 		"on_cancel": [
 			"erpnext.regional.italy.utils.sales_invoice_on_cancel",
-			"erpnext.erpnext_integrations.taxjar_integration.delete_transaction",
+			# "erpnext.erpnext_integrations.taxjar_integration.delete_transaction",
 			"erpnext.regional.saudi_arabia.utils.delete_qr_code_file",
 		],
 		"on_trash": "erpnext.regional.check_deletion_permission",
@@ -435,7 +435,7 @@ doc_events = {
 		"after_insert": "erpnext.crm.doctype.email_campaign.email_campaign.unsubscribe_recipient"
 	},
 	("Quotation", "Sales Order", "Sales Invoice"): {
-		"validate": ["erpnext.erpnext_integrations.taxjar_integration.set_sales_tax"]
+		# "validate": ["erpnext.erpnext_integrations.taxjar_integration.set_sales_tax"]
 	},
 	"Company": {
 		"on_trash": [

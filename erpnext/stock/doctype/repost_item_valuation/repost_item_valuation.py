@@ -282,9 +282,10 @@ def _get_directly_dependent_vouchers(doc):
 
 
 def notify_error_to_stock_managers(doc, traceback):
-	recipients = get_users_with_role("Stock Manager")
-	if not recipients:
-		recipients = get_users_with_role("System Manager")
+	# recipients = get_users_with_role("Stock Manager")
+	recipients = get_users_with_role("System Notification")
+	# if not recipients:
+	# 	recipients = get_users_with_role("System Manager")
 
 	subject = _("Error while reposting item valuation")
 	message = (

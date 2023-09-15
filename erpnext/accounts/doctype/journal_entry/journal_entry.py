@@ -75,7 +75,7 @@ class JournalEntry(AccountsController):
 		self.validate_empty_accounts_table()
 		self.set_account_and_party_balance()
 		self.validate_inter_company_accounts()
-		self.validate_depr_entry_voucher_type()
+		# self.validate_depr_entry_voucher_type()
 
 		if self.docstatus == 0:
 			self.apply_tax_withholding()

@@ -52,12 +52,12 @@ frappe.query_reports["Accounts Receivable"] = {
 						frappe.query_report.set_filter_value('payment_terms', value["payment_terms"]);
 					});
 
-					frappe.db.get_value('Customer Credit Limit', {'parent': customer, 'company': company},
-						["credit_limit"], function(value) {
-						if (value) {
-							frappe.query_report.set_filter_value('credit_limit', value["credit_limit"]);
-						}
-					}, "Customer");
+					// frappe.db.get_value('Customer Credit Limit', {'parent': customer, 'company': company},
+					// 	["credit_limit"], function(value) {
+					// 	if (value) {
+					// 		frappe.query_report.set_filter_value('credit_limit', value["credit_limit"]);
+					// 	}
+					// }, "Customer");
 				} else {
 					frappe.query_report.set_filter_value('tax_id', "");
 					frappe.query_report.set_filter_value('customer_name', "");

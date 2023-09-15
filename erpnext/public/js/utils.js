@@ -471,7 +471,8 @@ erpnext.utils.update_child_items = function(opts) {
 			"docname": d.name,
 			"name": d.name,
 			"item_code": d.item_code,
-			"delivery_date": d.delivery_date,
+			// "delivery_date": d.delivery_date,
+			"up_customer_ship_to_date": d.up_customer_ship_to_date,
 			"schedule_date": d.schedule_date,
 			"conversion_factor": d.conversion_factor,
 			"qty": d.qty,
@@ -558,9 +559,11 @@ erpnext.utils.update_child_items = function(opts) {
 	if (frm.doc.doctype == 'Sales Order' || frm.doc.doctype == 'Purchase Order' ) {
 		fields.splice(2, 0, {
 			fieldtype: 'Date',
-			fieldname: frm.doc.doctype == 'Sales Order' ? "delivery_date" : "schedule_date",
+			// fieldname: frm.doc.doctype == 'Sales Order' ? "delivery_date" : "schedule_date",
+			fieldname: frm.doc.doctype == 'Sales Order' ? "up_customer_ship_to_date" : "schedule_date",
 			in_list_view: 1,
-			label: frm.doc.doctype == 'Sales Order' ? __("Delivery Date") : __("Reqd by date"),
+			// label: frm.doc.doctype == 'Sales Order' ? __("Delivery Date") : __("Reqd by date"),
+			label: frm.doc.doctype == 'Sales Order' ? __("Ship to Date") : __("Reqd by date"),
 			reqd: 1
 		})
 		fields.splice(3, 0, {

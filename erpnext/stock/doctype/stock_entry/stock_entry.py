@@ -456,11 +456,11 @@ class StockEntry(StockController):
 						if not d.s_warehouse:
 							frappe.throw(_("Source warehouse is mandatory for row {0}").format(d.idx))
 
-			if (
-				cstr(d.s_warehouse) == cstr(d.t_warehouse)
-				and not self.purpose == "Material Transfer for Manufacture"
-			):
-				frappe.throw(_("Source and target warehouse cannot be same for row {0}").format(d.idx))
+			# if (
+			# 	cstr(d.s_warehouse) == cstr(d.t_warehouse)
+			# 	and not self.purpose == "Material Transfer for Manufacture"
+			# ):
+			# 	frappe.throw(_("Source and target warehouse cannot be same for row {0}").format(d.idx))
 
 			if not (d.s_warehouse or d.t_warehouse):
 				frappe.throw(_("Atleast one warehouse is mandatory"))

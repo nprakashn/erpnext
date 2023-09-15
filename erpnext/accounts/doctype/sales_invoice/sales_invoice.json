@@ -14,7 +14,6 @@
   "tax_id",
   "pos_profile",
   "is_pos",
-  "is_consolidated",
   "is_return",
   "is_debit_note",
   "update_billed_amount_in_sales_order",
@@ -30,6 +29,7 @@
   "accounting_dimensions_section",
   "project",
   "dimension_col_break",
+  "is_consolidated",
   "cost_center",
   "customer_po_details",
   "po_no",
@@ -1921,8 +1921,7 @@
    "depends_on": "eval:(doc.is_pos && doc.is_consolidated)",
    "fieldname": "is_consolidated",
    "fieldtype": "Check",
-   "label": "Is Consolidated",
-   "read_only": 1
+   "label": "Is Consolidated"
   },
   {
    "default": "0",
@@ -1978,7 +1977,8 @@
    "description": "Issue a debit note with 0 qty against an existing Sales Invoice",
    "fieldname": "is_debit_note",
    "fieldtype": "Check",
-   "label": "Is Rate Adjustment Entry (Debit Note)"
+   "label": "Is Rate Adjustment Entry (Debit Note)",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -2047,12 +2047,11 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2023-01-28 19:45:47.538163",
+ "modified": "2023-03-20 05:56:58.593648",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
  "name_case": "Title Case",
- "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -2098,7 +2097,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "timeline_field": "customer",
  "title_field": "title",
  "track_changes": 1,
