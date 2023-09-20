@@ -479,7 +479,7 @@ class Item(Document):
 			self.set_last_purchase_rate(new_name)
 			self.recalculate_bin_qty(new_name)
 
-		for dt in ("Purchase Taxes and Charges"):
+		for dt in ["Purchase Taxes and Charges"]:
 			for d in frappe.db.sql(
 				"""select name, item_wise_tax_detail from `tab{0}`
 					where ifnull(item_wise_tax_detail, '') != ''""".format(
