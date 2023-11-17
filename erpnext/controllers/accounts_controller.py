@@ -1635,8 +1635,13 @@ class AccountsController(TransactionBase):
 				)
 				self.append("payment_schedule", data)
 
+		allocate_payment_based_on_payment_terms = frappe.db.get_value(
+			"Payment Terms Template", self.payment_terms_template, "allocate_payment_based_on_payment_terms"
+		)
+
 		if not (
 			automatically_fetch_payment_terms
+			and allocate_payment_based_on_payment_terms
 			and self.linked_order_has_payment_terms(po_or_so, fieldname, doctype)
 		):
 			for d in self.get("payment_schedule"):
@@ -2696,7 +2701,8 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 			if parent.up_source_physical_warehouse:
 				from upro_erp.sales_order.sales_order import get_recive_wh
-				child_item.warehouse = get_recive_wh(d.get('item_code'),parent.up_source_physical_warehouse)[0]["default_storage_location"]
+				if not child_item.warehouse:
+					child_item.warehouse = get_recive_wh(d.get('item_code'),parent.up_source_physical_warehouse)[0]["default_storage_location"]
 				cf=frappe.get_value("UOM Conversion Detail", {"parent": d.get("item_code"),"uom":"PAN"}, "conversion_factor")
 				if cf is None :
 					pan_size=''
