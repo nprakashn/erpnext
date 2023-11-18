@@ -576,6 +576,24 @@
    "type": "Card Break"
   },
   {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "PL - DN Difference Report",
+   "link_to": "PL - DN Difference Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Pick Lists Without Delivery note",
+   "link_to": "Pick Lists Without Delivery note",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
    "dependencies": "Material Request",
    "hidden": 0,
    "is_query_report": 1,
@@ -691,8 +709,8 @@
    "type": "Link"
   }
  ],
- "modified": "2021-05-13 13:10:24.914983",
- "modified_by": "Administrator",
+ "modified": "2023-10-24 16:13:23.631232",
+ "modified_by": "creynolds@ultrapro.com",
  "module": "Stock",
  "name": "Stock",
  "onboarding": "Stock",
