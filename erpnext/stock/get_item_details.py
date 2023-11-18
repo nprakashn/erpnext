@@ -63,6 +63,11 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	item = frappe.get_cached_doc("Item", args.item_code)
 	validate_item_details(args, item)
 
+	if doc is not None and isinstance(doc, string_types):
+		out = get_basic_details(args, item, overwrite_warehouse, json.loads(doc))
+	else:
+		out = get_basic_details(args, item, overwrite_warehouse, doc)
+
 	if isinstance(doc, string_types):
 		doc = json.loads(doc)
 
@@ -72,7 +77,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if doc.get("doctype") == "Purchase Invoice":
 			args["bill_date"] = doc.get("bill_date")
 
-	out = get_basic_details(args, item, overwrite_warehouse)
+	# out = get_basic_details(args, item, overwrite_warehouse)
 	get_item_tax_template(args, item, out)
 	out["item_tax_rate"] = get_item_tax_map(
 		args.company,
@@ -242,8 +247,12 @@ def validate_item_details(args, item):
 		if args.get("is_subcontracted") == "Yes" and item.is_sub_contracted_item != 1:
 			throw(_("Item {0} must be a Sub-contracted Item").format(item.name))
 
+def get_sales_channel_defaults(sales_channel, company):
+	sales_channel_new = frappe.get_cached_doc("UPRO Sales Channel", sales_channel)
+	return sales_channel_new
 
-def get_basic_details(args, item, overwrite_warehouse=True):
+
+def get_basic_details(args, item, overwrite_warehouse=True, doc="None"):
 	"""
 	:param args: {
 	                "item_code": "",
@@ -290,6 +299,11 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	item_defaults = get_item_defaults(item.name, args.company)
 	item_group_defaults = get_item_group_defaults(item.name, args.company)
 	brand_defaults = get_brand_defaults(item.name, args.company)
+
+	if doc and doc is not None and doc.get("up_sales_channel"):
+		sales_channel_defaults = get_sales_channel_defaults(doc.get("up_sales_channel"), args.company)
+	else:
+		sales_channel_defaults = {}
 
 	defaults = frappe._dict(
 		{
@@ -342,10 +356,10 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"image": cstr(item.image).strip(),
 			"warehouse": warehouse,
 			"income_account": get_default_income_account(
-				args, item_defaults, item_group_defaults, brand_defaults
+				args, item_defaults, item_group_defaults, brand_defaults, sales_channel_defaults
 			),
 			"expense_account": expense_account
-			or get_default_expense_account(args, item_defaults, item_group_defaults, brand_defaults),
+			or get_default_expense_account(args, item_defaults, item_group_defaults, brand_defaults, sales_channel_defaults),
 			"discount_account": get_default_discount_account(args, item_defaults),
 			"provisional_expense_account": get_provisional_account(args, item_defaults),
 			"cost_center": get_default_cost_center(
@@ -685,18 +699,20 @@ def calculate_service_end_date(args, item=None):
 	return deferred_detail
 
 
-def get_default_income_account(args, item, item_group, brand):
+def get_default_income_account(args, item, item_group, brand, sales_channel):
 	return (
 		item.get("income_account")
+		or sales_channel.get("default_income_account")
 		or item_group.get("income_account")
 		or brand.get("income_account")
 		or args.income_account
 	)
 
 
-def get_default_expense_account(args, item, item_group, brand):
+def get_default_expense_account(args, item, item_group, brand, sales_channel):
 	return (
 		item.get("expense_account")
+		or sales_channel.get("default_expense_account")
 		or item_group.get("expense_account")
 		or brand.get("expense_account")
 		or args.expense_account
@@ -751,6 +767,12 @@ def get_default_cost_center(args, item=None, item_group=None, brand=None, compan
 			data = frappe.get_attr(path)(args.get("item_code"), company)
 
 			if data and (data.selling_cost_center or data.buying_cost_center):
+				if args.get("customer") and data.selling_cost_center:
+					return data.selling_cost_center
+
+				elif args.get("supplier") and data.buying_cost_center:
+					return data.buying_cost_center
+
 				return data.selling_cost_center or data.buying_cost_center
 
 	if not cost_center and args.get("cost_center"):
