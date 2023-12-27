@@ -1,6 +1,6 @@
 frappe.listview_settings['Delivery Note'] = {
 	add_fields: ["customer", "customer_name", "base_grand_total", "per_installed", "per_billed",
-		"transporter_name", "grand_total", "is_return", "status", "currency"],
+		"transporter_name", "grand_total", "is_return", "status", "currency", "dt_delivery_status"],
 	get_indicator: function(doc) {
 		if(cint(doc.is_return)==1) {
 			return [__("Return"), "gray", "is_return,=,Yes"];
@@ -8,6 +8,8 @@ frappe.listview_settings['Delivery Note'] = {
 			return [__("Closed"), "green", "status,=,Closed"];
 		} else if (doc.status === "Return Issued") {
 			return [__("Return Issued"), "grey", "status,=,Return Issued"];
+		} else if (doc.dt_delivery_status !== "Fully Delivered") {
+			return [__("To Deliver and Bill"), "orange"];
 		} else if (flt(doc.per_billed, 2) < 100) {
 			return [__("To Bill"), "orange", "per_billed,<,100"];
 		} else if (flt(doc.per_billed, 2) === 100) {

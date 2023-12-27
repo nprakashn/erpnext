@@ -177,6 +177,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				}, __('Create'));
 			}
 		}
+		hide_custom_buttons(this.frm)
 	}
 
 	make_maintenance_schedule() {
@@ -1053,4 +1054,17 @@ var select_loyalty_program = function(frm, loyalty_programs) {
 	});
 
 	dialog.show();
+}
+
+function hide_custom_buttons(frm){
+	if (frappe.user.name !== "Administrator"){
+		frm.remove_custom_button("Quality Inspection(s)", "Create")
+		frm.remove_custom_button("Invoice Discounting", "Create")
+		frm.remove_custom_button("Maintenance Schedule", "Create")
+		frm.remove_custom_button("Subscription", "Create")
+		frm.remove_custom_button("Fetch Timesheet")
+		frm.remove_custom_button("Sales Order", "Get Items From")
+		frm.remove_custom_button("Quotation", "Get Items From")
+		frm.remove_custom_button("Return / Credit Note", "Create")
+	}
 }

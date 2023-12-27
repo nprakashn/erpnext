@@ -307,6 +307,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		}
 
 		this.order_type(doc);
+		hide_custom_buttons(this.frm)
 	}
 
 	create_pick_list() {
@@ -821,3 +822,21 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 };
 
 extend_cscript(cur_frm.cscript, new erpnext.selling.SalesOrderController({frm: cur_frm}));
+
+function hide_custom_buttons(frm){
+	if (frappe.user.name !== "Administrator"){
+		frm.remove_custom_button("Pick List", "Create")
+		frm.remove_custom_button("Sales Invoice", "Create")
+		frm.remove_custom_button("Work Order", "Create")
+		frm.remove_custom_button("Material Request", "Create")
+		frm.remove_custom_button("Request for Raw Materials", "Create")
+		frm.remove_custom_button("Maintenance Visit", "Create")
+		frm.remove_custom_button("Maintenance Schedule", "Create")
+		frm.remove_custom_button("Project", "Create")
+		frm.remove_custom_button("Subscription", "Create")
+		frm.remove_custom_button("Purchase Order", "Create")
+		frm.remove_custom_button("Payment Request", "Create")
+		frm.remove_custom_button("Payment", "Create")
+		frm.remove_custom_button("Quotation", "Get Items From")
+	}
+}

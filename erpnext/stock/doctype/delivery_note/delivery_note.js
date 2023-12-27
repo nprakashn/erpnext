@@ -218,7 +218,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 				return item.against_sales_invoice ? true : false;
 			});
 
-			if(!from_sales_invoice) {
+			if(!from_sales_invoice && doc.dt_delivery_status === "Fully Delivered") {
 				this.frm.add_custom_button(__('Sales Invoice'), function() { me.make_sales_invoice() },
 					__('Create'));
 			}
@@ -235,6 +235,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 				erpnext.utils.make_subscription(doc.doctype, doc.name)
 			}, __('Create'))
 		}
+		hide_custom_buttons(this.frm)
 	}
 
 	make_shipment() {
@@ -377,3 +378,14 @@ frappe.tour['Delivery Note'] = [
 		description: __("This option can be checked to edit the 'Posting Date' and 'Posting Time' fields.")
 	}
 ]
+
+function hide_custom_buttons(frm){
+	if (frappe.user.name !== "Administrator"){
+		frm.remove_custom_button("Quality Inspection(s)", "Create")
+		frm.remove_custom_button("Packing Slip", "Create")
+		frm.remove_custom_button("Shipment", "Create")
+		frm.remove_custom_button("Installation Note", "Create")
+		frm.remove_custom_button("Subscription", "Create")
+		frm.remove_custom_button("Sales Return", "Create")
+	}
+}

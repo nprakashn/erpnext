@@ -64,6 +64,7 @@ frappe.ui.form.on('Delivery Trip', {
 				})
 			}, __("Get customers from"));
 		}
+		frm.clear_custom_buttons();
 	},
 
 	calculate_arrival_time: function (frm) {

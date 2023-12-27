@@ -1,6 +1,6 @@
 frappe.listview_settings['Sales Order'] = {
 	add_fields: ["base_grand_total", "customer_name", "currency", "delivery_date",
-		"per_delivered", "per_billed", "status", "order_type", "name", "skip_delivery_note"],
+		"per_delivered", "per_billed", "status", "order_type", "name", "skip_delivery_note", "dt_delivery_status"],
 	get_indicator: function (doc) {
 		if (doc.status === "Closed") {
 			// Closed
@@ -10,7 +10,7 @@ frappe.listview_settings['Sales Order'] = {
 			return [__("On Hold"), "orange", "status,=,On Hold"];
 		} else if (doc.status === "Completed") {
 			return [__("Completed"), "green", "status,=,Completed"];
-		} else if (!doc.skip_delivery_note && flt(doc.per_delivered, 6) < 100) {
+		} else if (!doc.skip_delivery_note && flt(doc.per_delivered, 6) < 100  || (doc.dt_delivery_status !== "Fully Delivered")) {
 			if (frappe.datetime.get_diff(doc.delivery_date) < 0) {
 			// not delivered & overdue
 				return [__("Overdue"), "red",

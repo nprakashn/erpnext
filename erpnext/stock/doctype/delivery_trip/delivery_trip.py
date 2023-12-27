@@ -31,14 +31,14 @@ class DeliveryTrip(Document):
 
 	def on_submit(self):
 		self.update_status()
-		self.update_delivery_notes()
+		# self.update_delivery_notes()
 
 	def on_update_after_submit(self):
 		self.update_status()
 
 	def on_cancel(self):
 		self.update_status()
-		self.update_delivery_notes(delete=True)
+		# self.update_delivery_notes(delete=True)
 
 	def validate_stop_addresses(self):
 		for stop in self.delivery_stops:

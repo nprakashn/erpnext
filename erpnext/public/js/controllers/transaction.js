@@ -424,7 +424,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
 		var update_stock = 0, show_batch_dialog = 0;
-
+		var pr_rate
+		pr_rate = pricing_rule_for_terminal_and_conignee(doc, item.item_code)
+		if(pr_rate <= 0.0){
+			pr_rate = item.rate
+		}
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
 		item.conversion_factor = 0;
@@ -490,6 +494,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 							item_tax_template: item.item_tax_template,
 							child_docname: item.name,
 							is_old_subcontracting_flow: me.frm.doc.is_old_subcontracting_flow,
+							rate: pr_rate
 						}
 					},
 
@@ -2359,3 +2364,25 @@ erpnext.apply_putaway_rule = (frm, purpose=null) => {
 		}
 	});
 };
+
+function pricing_rule_for_terminal_and_conignee(doc, item_code){
+	if (doc.customer && doc.terminal && doc.shipping_address_name && item_code){
+		if (item_code){
+			var rate
+			frappe.call({
+				method: "shine.pricing_rule.pricing_rule.pricing_rule_for_terminal_city_and_consignee",
+				args: {
+					"self": doc,
+					"item_code": item_code
+				},
+				async: false,
+				callback: (r) => {
+					if (r.message) {
+						rate = r.message
+					}
+				}
+			});
+		return rate
+		}
+	}
+}
