@@ -460,7 +460,7 @@ class SubcontractingController(StockController):
 					"allow_zero_valuation": 1,
 				}
 			)
-			rm_obj.rate = bom_item.rate if self.backflush_based_on == "BOM" else get_incoming_rate(args)
+			rm_obj.rate = get_incoming_rate(args)
 
 		if self.doctype == self.subcontract_data.order_doctype:
 			rm_obj.required_qty = qty
@@ -655,7 +655,7 @@ class SubcontractingController(StockController):
 						{
 							"item_code": item.rm_item_code,
 							"warehouse": self.supplier_warehouse,
-							"actual_qty": -1 * flt(item.consumed_qty),
+							"actual_qty": -1 * flt(item.consumed_qty, item.precision("consumed_qty")),
 							"dependant_sle_voucher_detail_no": item.reference_name,
 						},
 					)
@@ -788,6 +788,23 @@ class SubcontractingController(StockController):
 				self._sub_contracted_items = [item.name for item in items]
 
 		return self._sub_contracted_items
+
+	def update_requested_qty(self):
+		material_request_map = {}
+		for d in self.get("items"):
+			if d.material_request_item:
+				material_request_map.setdefault(d.material_request, []).append(d.material_request_item)
+
+		for mr, mr_item_rows in material_request_map.items():
+			if mr and mr_item_rows:
+				mr_obj = frappe.get_doc("Material Request", mr)
+
+				if mr_obj.status in ["Stopped", "Cancelled"]:
+					frappe.throw(
+						_("Material Request {0} is cancelled or stopped").format(mr), frappe.InvalidStatusError
+					)
+
+				mr_obj.update_requested_qty(mr_item_rows)
 
 
 def get_item_details(items):

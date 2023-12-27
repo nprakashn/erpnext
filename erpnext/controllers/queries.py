@@ -560,6 +560,8 @@ def get_income_account(doctype, txt, searchfield, start, page_len, filters):
 	if filters.get("company"):
 		condition += "and tabAccount.company = %(company)s"
 
+	condition += f"and tabAccount.disabled = {filters.get('disabled', 0)}"
+
 	return frappe.db.sql(
 		"""select tabAccount.name from `tabAccount`
 			where (tabAccount.report_type = "Profit and Loss"
@@ -823,3 +825,18 @@ def get_fields(doctype, fields=None):
 		fields.insert(1, meta.title_field.strip())
 
 	return unique(fields)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_payment_terms_for_references(doctype, txt, searchfield, start, page_len, filters) -> list:
+	terms = []
+	if filters:
+		terms = frappe.db.get_all(
+			"Payment Schedule",
+			filters={"parent": filters.get("reference")},
+			fields=["payment_term"],
+			limit=page_len,
+			as_list=1,
+		)
+	return terms

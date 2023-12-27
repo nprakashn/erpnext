@@ -661,6 +661,9 @@ class BOM(WebsiteGenerator):
 		base_total_rm_cost = 0
 
 		for d in self.get("items"):
+			if not d.is_stock_item and self.rm_cost_as_per == "Valuation Rate":
+				continue
+
 			old_rate = d.rate
 			d.rate = self.get_rm_rate(
 				{
@@ -1172,12 +1175,12 @@ def get_children(parent=None, is_root=False, **filters):
 def add_additional_cost(stock_entry, work_order):
 	# Add non stock items cost in the additional cost
 	stock_entry.additional_costs = []
-	expenses_included_in_valuation = frappe.get_cached_value(
-		"Company", work_order.company, "expenses_included_in_valuation"
+	default_expense_account = frappe.get_cached_value(
+		"Company", work_order.company, "default_expense_account"
 	)
 
-	add_non_stock_items_cost(stock_entry, work_order, expenses_included_in_valuation)
-	add_operations_cost(stock_entry, work_order, expenses_included_in_valuation)
+	add_non_stock_items_cost(stock_entry, work_order, default_expense_account)
+	add_operations_cost(stock_entry, work_order, default_expense_account)
 
 
 def add_non_stock_items_cost(stock_entry, work_order, expense_account):
@@ -1306,7 +1309,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters):
 
 	order_by = "idx desc, name, item_name"
 
-	fields = ["name", "item_group", "item_name", "description"]
+	fields = ["name", "item_name", "item_group", "description"]
 	fields.extend(
 		[field for field in searchfields if not field in ["name", "item_group", "description"]]
 	)

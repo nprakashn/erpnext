@@ -2,12 +2,20 @@ frappe.provide("erpnext.financial_statements");
 
 erpnext.financial_statements = {
 	"filters": get_filters(),
-	"formatter": function(value, row, column, data, default_formatter) {
+	"formatter": function(value, row, column, data, default_formatter, filter) {
 		if (data && column.fieldname=="account") {
 			value = data.account_name || value;
 
-			column.link_onclick =
-				"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";
+			if (filter && filter?.text && filter?.type == "contains") {
+				if (!value.toLowerCase().includes(filter.text)) {
+					return value;
+				}
+			}
+
+			if (data.account) {
+				column.link_onclick =
+					"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";
+			}
 			column.is_tree = true;
 		}
 

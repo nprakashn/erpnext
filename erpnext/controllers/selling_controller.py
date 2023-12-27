@@ -4,15 +4,15 @@
 
 import frappe
 from frappe import _, bold, throw
-from frappe.contacts.doctype.address.address import get_address_display
 from frappe.utils import cint, cstr, flt, get_link_to_form, nowtime
 
+from erpnext.accounts.party import render_address
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from erpnext.controllers.sales_and_purchase_return import get_rate_for_return
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.doctype.item.item import set_item_default
 from erpnext.stock.get_item_details import get_bin_details, get_conversion_factor
-from erpnext.stock.utils import get_incoming_rate
+from erpnext.stock.utils import get_incoming_rate, get_valuation_method
 
 
 class SellingController(StockController):
@@ -282,7 +282,9 @@ class SellingController(StockController):
 			last_valuation_rate_in_sales_uom = last_valuation_rate * (item.conversion_factor or 1)
 
 			if flt(item.base_net_rate) < flt(last_valuation_rate_in_sales_uom):
-				throw_message(item.idx, item.item_name, last_valuation_rate_in_sales_uom, "valuation rate")
+				throw_message(
+					item.idx, item.item_name, last_valuation_rate_in_sales_uom, "valuation rate (Moving Average)"
+				)
 
 	def get_item_list(self):
 		il = []
@@ -342,11 +344,12 @@ class SellingController(StockController):
 		return il
 
 	def has_product_bundle(self, item_code):
-		return frappe.db.sql(
-			"""select name from `tabProduct Bundle`
-			where new_item_code=%s and docstatus != 2""",
-			item_code,
-		)
+		product_bundle = frappe.qb.DocType("Product Bundle")
+		return (
+			frappe.qb.from_(product_bundle)
+			.select(product_bundle.name)
+			.where((product_bundle.new_item_code == item_code) & (product_bundle.disabled == 0))
+		).run()
 
 	def get_already_delivered_qty(self, current_docname, so, so_detail):
 		delivered_via_dn = frappe.db.sql(
@@ -388,7 +391,7 @@ class SellingController(StockController):
 		for d in self.get("items"):
 			if d.get(ref_fieldname):
 				status = frappe.db.get_value("Sales Order", d.get(ref_fieldname), "status")
-				if status in ("Closed", "On Hold"):
+				if status in ("Closed", "On Hold") and not self.is_return:
 					frappe.throw(_("Sales Order {0} is {1}").format(d.get(ref_fieldname), status))
 
 	def update_reserved_qty(self):
@@ -404,7 +407,9 @@ class SellingController(StockController):
 			if so and so_item_rows:
 				sales_order = frappe.get_doc("Sales Order", so)
 
-				if sales_order.status in ["Closed", "Cancelled"]:
+				if (sales_order.status == "Closed" and not self.is_return) or sales_order.status in [
+					"Cancelled"
+				]:
 					frappe.throw(
 						_("{0} {1} is cancelled or closed").format(_("Sales Order"), so), frappe.InvalidStatusError
 					)
@@ -417,11 +422,15 @@ class SellingController(StockController):
 
 		items = self.get("items") + (self.get("packed_items") or [])
 		for d in items:
-			if not self.get("return_against"):
+			if not self.get("return_against") or (
+				get_valuation_method(d.item_code) == "Moving Average" and self.get("is_return")
+			):
 				# Get incoming rate based on original item cost based on valuation method
 				qty = flt(d.get("stock_qty") or d.get("actual_qty"))
 
-				if not (self.get("is_return") and d.incoming_rate):
+				if not d.incoming_rate or (
+					get_valuation_method(d.item_code) == "Moving Average" and self.get("is_return")
+				):
 					d.incoming_rate = get_incoming_rate(
 						{
 							"item_code": d.item_code,
@@ -587,7 +596,9 @@ class SellingController(StockController):
 
 		for address_field, address_display_field in address_dict.items():
 			if self.get(address_field):
-				self.set(address_display_field, get_address_display(self.get(address_field)))
+				self.set(
+					address_display_field, render_address(self.get(address_field), check_permissions=False)
+				)
 
 	def validate_for_duplicate_items(self):
 		check_list, chk_dupl_itm = [], []

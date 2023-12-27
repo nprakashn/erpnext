@@ -36,6 +36,8 @@ def make_closing_entries(closing_entries, voucher_name, company, closing_date):
 				"closing_date": closing_date,
 			}
 		)
+		cle.flags.ignore_permissions = True
+		cle.flags.ignore_links = True
 		cle.submit()
 
 
