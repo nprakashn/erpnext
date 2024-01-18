@@ -419,7 +419,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var item = frappe.get_doc(cdt, cdn);
 		var update_stock = 0, show_batch_dialog = 0;
 		var pr_rate
-		pr_rate = pricing_rule_for_terminal_and_conignee(doc, item.item_code)
+		pr_rate = pricing_rule_for_terminal_and_consignee(doc, item)
 		if(pr_rate <= 0.0){
 			pr_rate = item.rate
 		}
@@ -2373,21 +2373,19 @@ erpnext.apply_putaway_rule = (frm, purpose=null) => {
 	});
 };
 
-function pricing_rule_for_terminal_and_conignee(doc, item_code){
-	if (doc.customer && doc.terminal && doc.shipping_address_name && item_code){
-		if (item_code){
+function pricing_rule_for_terminal_and_consignee(doc, child){
+	if (doc.customer && child.custom_terminal && child.custom_consignee_address_name && child.item_code && child.custom_actual_delivery_date){
+		if (child.item_code){
 			var rate
 			frappe.call({
 				method: "shine.pricing_rule.pricing_rule.pricing_rule_for_terminal_city_and_consignee",
 				args: {
-					"self": doc,
-					"item_code": item_code
+					"self": frm.doc,
+					"child": child
 				},
 				async: false,
 				callback: (r) => {
-					if (r.message) {
-						rate = r.message
-					}
+					var rate = r.message[0]
 				}
 			});
 		return rate
