@@ -420,9 +420,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var update_stock = 0, show_batch_dialog = 0;
 		var pr_rate
 		pr_rate = pricing_rule_for_terminal_and_consignee(doc, item)
-		if(pr_rate <= 0.0){
-			pr_rate = item.rate
-		}
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
 		item.conversion_factor = 0;
@@ -2380,12 +2377,12 @@ function pricing_rule_for_terminal_and_consignee(doc, child){
 			frappe.call({
 				method: "shine.pricing_rule.pricing_rule.pricing_rule_for_terminal_city_and_consignee",
 				args: {
-					"self": frm.doc,
+					"self": doc,
 					"child": child
 				},
 				async: false,
 				callback: (r) => {
-					var rate = r.message[0]
+					rate = r.message[0]
 				}
 			});
 		return rate
