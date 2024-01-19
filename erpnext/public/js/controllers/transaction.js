@@ -2382,7 +2382,12 @@ function pricing_rule_for_terminal_and_consignee(doc, child){
 				},
 				async: false,
 				callback: (r) => {
-					rate = r.message[0]
+					if (r.message){
+						rate = r.message.rate
+					}
+					else{
+						rate = 0.0
+					}
 				}
 			});
 		return rate
