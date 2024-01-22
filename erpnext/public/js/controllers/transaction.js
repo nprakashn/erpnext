@@ -418,15 +418,14 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
 		var update_stock = 0, show_batch_dialog = 0;
-		var pr_rate
-		pr_rate = pricing_rule_for_terminal_and_consignee(doc, item)
+		var pr_rate = 0.0;
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
 		item.conversion_factor = 0;
-
 		if(['Sales Invoice'].includes(this.frm.doc.doctype)) {
 			update_stock = cint(me.frm.doc.update_stock);
 			show_batch_dialog = update_stock;
+			pr_rate = pricing_rule_for_terminal_and_consignee(doc, item)
 
 		} else if((this.frm.doc.doctype === 'Purchase Receipt' && me.frm.doc.is_return) ||
 			this.frm.doc.doctype === 'Delivery Note') {
