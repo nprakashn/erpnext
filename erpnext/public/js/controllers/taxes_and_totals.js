@@ -149,7 +149,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 					item.net_amount = item.amount = flt(item.rate * qty, precision("amount", item));
 				}
-
+				if (me.frm.doc.doctype === "Sales Invoice"){
+					item.net_amount = item.amount = flt((item.rate * item.qty) + item.custom_fuel_surcharge_rate, precision("amount", item));
+				}
 				item.item_tax_amount = 0.0;
 				item.total_weight = flt(item.weight_per_unit * item.stock_qty);
 

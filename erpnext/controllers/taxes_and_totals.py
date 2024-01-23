@@ -200,6 +200,8 @@ class calculate_taxes_and_totals(object):
 				else:
 					item.amount = flt(item.rate * item.qty, item.precision("amount"))
 
+				if self.doc.get("doctype") == "Sales Invoice":
+					item.amount = flt((item.rate * item.qty) + item.custom_fuel_surcharge_rate, item.precision("amount"))
 				item.net_amount = item.amount
 
 				self._set_in_company_currency(
