@@ -1549,13 +1549,14 @@ class AccountsController(TransactionBase):
 			ref_amt = flt(reference_details.get(item.get(item_ref_dn)), self.precision(based_on, item))
 
 			if not ref_amt:
-				frappe.msgprint(
-					_("System will not check over billing since amount for Item {0} in {1} is zero").format(
-						item.item_code, ref_dt
-					),
-					title=_("Warning"),
-					indicator="orange",
-				)
+				if ref_dt != "Delivery Note":
+					frappe.msgprint(
+						_("System will not check over billing since amount for Item {0} in {1} is zero").format(
+							item.item_code, ref_dt
+						),
+						title=_("Warning"),
+						indicator="orange",
+					)
 				continue
 
 			already_billed = self.get_billed_amount_for_item(item, item_ref_dn, based_on)
