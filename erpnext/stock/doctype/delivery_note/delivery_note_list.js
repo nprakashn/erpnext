@@ -10,6 +10,8 @@ frappe.listview_settings['Delivery Note'] = {
 			return [__("Return Issued"), "grey", "status,=,Return Issued"];
 		} else if (doc.dt_delivery_status !== "Fully Delivered") {
 			return [__("To Deliver and Bill"), "orange"];
+		} else if (doc.custom_invoice_status === "Unpaid" && flt(doc.per_billed, 2) !== 100) {
+			return [__("Unpaid"), "orange"];
 		} else if (flt(doc.per_billed, 2) < 100) {
 			return [__("To Bill"), "orange", "per_billed,<,100"];
 		} else if (flt(doc.per_billed, 2) === 100) {
