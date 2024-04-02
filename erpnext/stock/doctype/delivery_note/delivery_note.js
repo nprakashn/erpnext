@@ -179,7 +179,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 					me.make_sales_return() }, __('Create'));
 			}
 
-			if (doc.docstatus==1) {
+			if (doc.docstatus==1 && doc.dt_delivery_status !== "Fully Delivered") {
 				this.frm.add_custom_button(__('Delivery Trip'), function() {
 					me.make_delivery_trip() }, __('Create'));
 			}
