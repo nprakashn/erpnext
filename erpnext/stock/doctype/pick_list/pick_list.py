@@ -266,23 +266,16 @@ class PickList(Document):
 		precision = frappe.get_precision("Stock Ledger Entry", "qty_after_transaction")
 
 		possible_bundles = []
-		qty_in_bundle_list = []
 		for item in self.locations:
 			if item.product_bundle_item != bundle_row:
 				continue
 
 			qty_in_bundle = bundle_items.get(item.item_code)
-			qty_in_bundle_list.append(qty_in_bundle)
 			if qty_in_bundle:
 				possible_bundles.append(item.picked_qty / qty_in_bundle)
 			else:
 				possible_bundles.append(0)
-		qty_list = list(set(qty_in_bundle_list))
-		if len(qty_list) == 1 and qty_list[0] == 1:
-			final_qty = sum(possible_bundles)
-		else:
-			final_qty = min(possible_bundles)
-		return int(flt(final_qty, precision or 6))
+		return int(flt(min(possible_bundles), precision or 6))
 
 
 def validate_item_locations(pick_list):
