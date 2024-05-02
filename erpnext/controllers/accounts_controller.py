@@ -3186,8 +3186,22 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 				flt(d.get("conversion_factor"), conv_fac_precision) or conversion_factor
 			)
 
-		if d.get("delivery_date") and parent_doctype == "Sales Order":
-			child_item.delivery_date = d.get("delivery_date")
+		# if d.get("delivery_date") and parent_doctype == "Sales Order":
+		# 	child_item.delivery_date = d.get("delivery_date")
+
+		if d.get("up_customer_ship_to_date") and parent_doctype == 'Sales Order':
+			child_item.up_customer_ship_to_date = d.get('up_customer_ship_to_date')
+
+			if parent.up_source_physical_warehouse:
+				from upro_erp.sales_order.sales_order import get_recive_wh
+				if not child_item.warehouse:
+					child_item.warehouse = get_recive_wh(d.get('item_code'),parent.up_source_physical_warehouse)[0]["default_storage_location"]
+				cf=frappe.get_value("UOM Conversion Detail", {"parent": d.get("item_code"),"uom":"PAN"}, "conversion_factor")
+				if cf is None :
+					pan_size=''
+				else:
+					pan_size=round(flt(d.get('qty'))/cf,2)
+				child_item.up_pan_size = pan_size
 
 		if d.get("schedule_date") and parent_doctype == "Purchase Order":
 			child_item.schedule_date = d.get("schedule_date")

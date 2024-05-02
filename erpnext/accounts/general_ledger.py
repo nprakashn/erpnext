@@ -420,26 +420,46 @@ def process_debit_credit_difference(gl_map):
 
 	debit_credit_diff = get_debit_credit_difference(gl_map, precision)
 
-	if abs(debit_credit_diff) > allowance:
-		if not (
-			voucher_type == "Journal Entry"
-			and frappe.get_cached_value("Journal Entry", voucher_no, "voucher_type")
-			== "Exchange Gain Or Loss"
-		):
+	# if abs(debit_credit_diff) > allowance:
+	# 	if not (
+	# 		voucher_type == "Journal Entry"
+	# 		and frappe.get_cached_value("Journal Entry", voucher_no, "voucher_type")
+	# 		== "Exchange Gain Or Loss"
+	# 	):
+	# 		raise_debit_credit_not_equal_error(debit_credit_diff, voucher_type, voucher_no)
+
+	# elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+	# 	make_round_off_gle(gl_map, debit_credit_diff, precision)
+
+	# debit_credit_diff = get_debit_credit_difference(gl_map, precision)
+	# if abs(debit_credit_diff) > allowance:
+	# 	if not (
+	# 		voucher_type == "Journal Entry"
+	# 		and frappe.get_cached_value("Journal Entry", voucher_no, "voucher_type")
+	# 		== "Exchange Gain Or Loss"
+	# 	):
+	# 		raise_debit_credit_not_equal_error(debit_credit_diff, voucher_type, voucher_no)
+
+	if gl_map[0]["voucher_type"] in ("Sales Invoice"):
+		sales_channel,currency = frappe.db.get_value('Sales Invoice', gl_map[0].voucher_no, ['up_sales_channel', 'currency'])		
+		if abs(debit_credit_diff) >= allowance and sales_channel == 'Amazon Seller Central' and currency != 'USD':
+			if abs(debit_credit_diff) < 5.00:
+				from upro_erp_integ.uproerpinteg.amazon_seller_central import make_exchange_off_gle
+				make_exchange_off_gle(gl_map, debit_credit_diff, precision)
+			else:                
+				raise_debit_credit_not_equal_error(debit_credit_diff, voucher_type, voucher_no)
+
+		elif abs(debit_credit_diff) >= allowance and sales_channel != 'Amazon Seller Central':
 			raise_debit_credit_not_equal_error(debit_credit_diff, voucher_type, voucher_no)
 
-	elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
-		make_round_off_gle(gl_map, debit_credit_diff, precision)
-
-	debit_credit_diff = get_debit_credit_difference(gl_map, precision)
-	if abs(debit_credit_diff) > allowance:
-		if not (
-			voucher_type == "Journal Entry"
-			and frappe.get_cached_value("Journal Entry", voucher_no, "voucher_type")
-			== "Exchange Gain Or Loss"
-		):
+		elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+			make_round_off_gle(gl_map, debit_credit_diff, precision)
+	else:
+		if abs(debit_credit_diff) >= allowance:
 			raise_debit_credit_not_equal_error(debit_credit_diff, voucher_type, voucher_no)
 
+		elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
+			make_round_off_gle(gl_map, debit_credit_diff, precision)
 
 def get_debit_credit_difference(gl_map, precision):
 	debit_credit_diff = 0.0
@@ -457,7 +477,7 @@ def get_debit_credit_allowance(voucher_type, precision):
 	if voucher_type in ("Journal Entry", "Payment Entry"):
 		allowance = 5.0 / (10**precision)
 	else:
-		allowance = 0.5
+		allowance = 0.99
 
 	return allowance
 
