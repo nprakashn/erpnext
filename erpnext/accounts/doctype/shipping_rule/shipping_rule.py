@@ -108,14 +108,14 @@ class ShippingRule(Document):
 				)
 
 	def add_shipping_rule_to_tax_table(self, doc, shipping_amount):
-		if doc.up_sales_channel != "Shopify":
+		if doc.up_sales_channel not in ["Shopify", "MTGPS Retail Wholesale"]:
 			account_head = self.account
 			cost_center_head = self.cost_center
 			if doc.up_sales_channel is not None and len(doc.up_sales_channel) > 0:
-			    account_name,cost_center = frappe.get_value('Freight Account Settings', {'sales_channel': doc.up_sales_channel},['account_no','cost_center'])
-			    if account_name is not None:
-			        account_head = account_name
-			        cost_center_head = cost_center
+				account_name,cost_center = frappe.get_value('Freight Account Settings', {'sales_channel': doc.up_sales_channel}, ['account_no', 'cost_center'])
+				if account_name is not None:
+					account_head = account_name
+					cost_center_head = cost_center
 			shipping_charge = {
 				"charge_type": "Actual",
 				"account_head": account_head,
