@@ -108,7 +108,7 @@ class ShippingRule(Document):
 				)
 
 	def add_shipping_rule_to_tax_table(self, doc, shipping_amount):
-		if doc.up_sales_channel not in ["Shopify", "MTGPS Retail Wholesale"]:
+		if doc.up_sales_channel not in ["Shopify", "MTGPS Retail Wholesale", "Shopify MPS"]:
 			account_head = self.account
 			cost_center_head = self.cost_center
 			if doc.up_sales_channel is not None and len(doc.up_sales_channel) > 0:
