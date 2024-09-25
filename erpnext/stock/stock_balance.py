@@ -93,54 +93,41 @@ def get_balance_qty_from_sle(item_code, warehouse):
 
 	return flt(balance_qty[0][0]) if balance_qty else 0.0
 
+from frappe.query_builder.functions import Sum
+def get_reserved_qty(item_code = "81320", warehouse= "Commerce - UPIL"):
+	sales_order_item = frappe.qb.DocType('Sales Order Item')
+	blanket_order_item = frappe.qb.DocType('Blanket Order Item')
+	material_request_item = frappe.qb.DocType('Material Request Item')
 
-def get_reserved_qty(item_code, warehouse):
-	reserved_qty = frappe.db.sql(
-		"""
-		select
-			sum(dnpi_qty * ((so_item_qty - so_item_delivered_qty) / so_item_qty))
-		from
-			(
-				(select
-					qty as dnpi_qty,
-					(
-						select qty from `tabSales Order Item`
-						where name = dnpi.parent_detail_docname
-						and (delivered_by_supplier is null or delivered_by_supplier = 0)
-					) as so_item_qty,
-					(
-						select delivered_qty from `tabSales Order Item`
-						where name = dnpi.parent_detail_docname
-						and delivered_by_supplier = 0
-					) as so_item_delivered_qty,
-					parent, name
-				from
-				(
-					select qty, parent_detail_docname, parent, name
-					from `tabPacked Item` dnpi_in
-					where item_code = %s and warehouse = %s
-					and parenttype="Sales Order"
-					and item_code != parent_item
-					and exists (select * from `tabSales Order` so
-					where name = dnpi_in.parent and docstatus = 1 and status not in ('Closed'))
-				) dnpi)
-			union
-				(select stock_qty as dnpi_qty, qty as so_item_qty,
-					delivered_qty as so_item_delivered_qty, parent, name
-				from `tabSales Order Item` so_item
-				where item_code = %s and warehouse = %s
-				and (so_item.delivered_by_supplier is null or so_item.delivered_by_supplier = 0)
-				and exists(select * from `tabSales Order` so
-					where so.name = so_item.parent and so.docstatus = 1
-					and so.status not in ('Closed')))
-			) tab
-		where
-			so_item_qty >= so_item_delivered_qty
-	""",
-		(item_code, warehouse, item_code, warehouse),
-	)
+	# Get the reserved quantity from Sales Order Item
+	soi_qty = (
+		frappe.qb.from_(sales_order_item)
+		.select(Sum((sales_order_item.stock_qty - sales_order_item.delivered_qty)).as_("reserved_qty"))
+		.where((sales_order_item.item_code == item_code) & (sales_order_item.warehouse == warehouse))
+	).run(as_dict=True)
 
-	return flt(reserved_qty[0][0]) if reserved_qty else 0
+	# Get the reserved quantity from Blanket Order Item
+	boi_qty = (
+		frappe.qb.from_(blanket_order_item)
+		.select(Sum((blanket_order_item.qty - blanket_order_item.ordered_qty)).as_("reserved_qty"))
+		.where((blanket_order_item.item_code == item_code) & (blanket_order_item.warehouse == warehouse))
+	).run(as_dict=True)
+
+	# Get the reserved quantity from Material Request Item
+	mri_qty = (
+		frappe.qb.from_(material_request_item)
+		.select(Sum((material_request_item.qty - material_request_item.ordered_qty)).as_("reserved_qty"))
+		.where((material_request_item.item_code == item_code) & (material_request_item.warehouse == warehouse))
+	).run(as_dict=True)
+
+	# Safely handle None values by replacing them with 0
+	soi_reserved_qty = soi_qty[0].get('reserved_qty') or 0 if soi_qty else 0
+	boi_reserved_qty = boi_qty[0].get('reserved_qty') or 0 if boi_qty else 0
+	mri_reserved_qty = mri_qty[0].get('reserved_qty') or 0 if mri_qty else 0
+
+	# Calculate total reserved quantity
+	reserved_qty = soi_reserved_qty + boi_reserved_qty + mri_reserved_qty
+	return reserved_qty
 
 
 def get_indented_qty(item_code, warehouse):
