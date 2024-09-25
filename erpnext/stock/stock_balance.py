@@ -94,30 +94,54 @@ def get_balance_qty_from_sle(item_code, warehouse):
 	return flt(balance_qty[0][0]) if balance_qty else 0.0
 
 from frappe.query_builder.functions import Sum
-def get_reserved_qty(item_code = "81320", warehouse= "Commerce - UPIL"):
+def get_reserved_qty(item_code, warehouse):
 	sales_order_item = frappe.qb.DocType('Sales Order Item')
+	sales_order = frappe.qb.DocType('Sales Order')
 	blanket_order_item = frappe.qb.DocType('Blanket Order Item')
+	blanket_order = frappe.qb.DocType('Blanket Order')
 	material_request_item = frappe.qb.DocType('Material Request Item')
+	material_request = frappe.qb.DocType('Material Request')
 
 	# Get the reserved quantity from Sales Order Item
-	soi_qty = (
-		frappe.qb.from_(sales_order_item)
-		.select(Sum((sales_order_item.stock_qty - sales_order_item.delivered_qty)).as_("reserved_qty"))
-		.where((sales_order_item.item_code == item_code) & (sales_order_item.warehouse == warehouse))
+	soi_qty = (frappe.qb.from_(sales_order_item)
+    .left_join(sales_order)
+    .on(sales_order_item.parent == sales_order.name)
+    .select(Sum(sales_order_item.stock_qty - sales_order_item.delivered_qty).as_("reserved_qty"))
+    .where(
+        (sales_order_item.item_code == item_code)
+        & (sales_order_item.warehouse == warehouse)
+        & (sales_order.docstatus == 1)
+		& (sales_order.status != "Closed")
+		& (sales_order_item.stock_qty >= sales_order_item.delivered_qty)
+    )
 	).run(as_dict=True)
 
-	# Get the reserved quantity from Blanket Order Item
-	boi_qty = (
-		frappe.qb.from_(blanket_order_item)
-		.select(Sum((blanket_order_item.qty - blanket_order_item.ordered_qty)).as_("reserved_qty"))
-		.where((blanket_order_item.item_code == item_code) & (blanket_order_item.warehouse == warehouse))
+	# # Get the reserved quantity from Blanket Order Item
+	boi_qty = (frappe.qb.from_(blanket_order_item)
+    .left_join(blanket_order)
+    .on(blanket_order_item.parent == blanket_order.name)
+    .select(Sum(blanket_order_item.qty - blanket_order_item.ordered_qty).as_("reserved_qty"))
+    .where(
+        (blanket_order_item.item_code == item_code)
+        & (blanket_order_item.warehouse == warehouse)
+        & (blanket_order.docstatus == 1)
+		& (blanket_order_item.qty >= blanket_order_item.ordered_qty)
+		& (blanket_order.up_bo_status != "Closed")
+    )
 	).run(as_dict=True)
 
 	# Get the reserved quantity from Material Request Item
-	mri_qty = (
-		frappe.qb.from_(material_request_item)
-		.select(Sum((material_request_item.qty - material_request_item.ordered_qty)).as_("reserved_qty"))
-		.where((material_request_item.item_code == item_code) & (material_request_item.warehouse == warehouse))
+	mri_qty = (frappe.qb.from_(material_request_item)
+    .left_join(material_request)
+    .on(material_request_item.parent == material_request.name)
+    .select(Sum(material_request_item.qty - material_request_item.ordered_qty).as_("reserved_qty"))
+    .where(
+        (material_request_item.item_code == item_code)
+        & (material_request_item.warehouse == warehouse)
+        & (material_request.docstatus == 1)
+		& (material_request.status != "Cancelled")
+		& (material_request_item.qty >= material_request_item.ordered_qty)
+    )
 	).run(as_dict=True)
 
 	# Safely handle None values by replacing them with 0
