@@ -106,13 +106,13 @@ def get_reserved_qty(item_code, warehouse):
 	soi_qty = (frappe.qb.from_(sales_order_item)
     .left_join(sales_order)
     .on(sales_order_item.parent == sales_order.name)
-    .select(Sum(sales_order_item.stock_qty - sales_order_item.delivered_qty).as_("reserved_qty"))
+    .select(Sum(sales_order_item.qty - sales_order_item.delivered_qty).as_("reserved_qty"))
     .where(
         (sales_order_item.item_code == item_code)
         & (sales_order_item.warehouse == warehouse)
         & (sales_order.docstatus == 1)
 		& (sales_order.status != "Closed")
-		& (sales_order_item.stock_qty >= sales_order_item.delivered_qty)
+		& (sales_order_item.qty >= sales_order_item.delivered_qty)
     )
 	).run(as_dict=True)
 
