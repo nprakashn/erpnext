@@ -4,8 +4,8 @@
 
 import frappe
 from frappe import qb
-from frappe.tests.utils import FrappeTestCase, change_settings
-from frappe.utils import add_days, flt, nowdate
+from frappe.tests import IntegrationTestCase, UnitTestCase
+from frappe.utils import add_days, add_years, flt, getdate, nowdate, today
 
 from erpnext import get_default_cost_center
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
@@ -13,13 +13,23 @@ from erpnext.accounts.doctype.payment_entry.test_payment_entry import create_pay
 from erpnext.accounts.doctype.purchase_invoice.test_purchase_invoice import make_purchase_invoice
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
 from erpnext.accounts.party import get_party_account
+from erpnext.accounts.utils import get_fiscal_year
 from erpnext.buying.doctype.purchase_order.test_purchase_order import create_purchase_order
 from erpnext.stock.doctype.item.test_item import create_item
 
-test_dependencies = ["Item"]
+EXTRA_TEST_RECORD_DEPENDENCIES = ["Item"]
 
 
-class TestPaymentReconciliation(FrappeTestCase):
+class UnitTestPaymentReconciliation(UnitTestCase):
+	"""
+	Unit tests for PaymentReconciliation.
+	Use this class for testing individual functions and methods.
+	"""
+
+	pass
+
+
+class TestPaymentReconciliation(IntegrationTestCase):
 	def setUp(self):
 		self.create_company()
 		self.create_item()
@@ -108,6 +118,14 @@ class TestPaymentReconciliation(FrappeTestCase):
 				"parent_account": "Current Assets - _PR",
 				"account_currency": "INR",
 				"account_type": "Payable",
+			},
+			# 'Receivable' account for capturing advance received, under 'Liabilities' group
+			{
+				"attribute": "advance_receivable_account",
+				"account_name": "Advance Received",
+				"parent_account": "Current Liabilities - _PR",
+				"account_currency": "INR",
+				"account_type": "Receivable",
 			},
 		]
 
@@ -1095,7 +1113,7 @@ class TestPaymentReconciliation(FrappeTestCase):
 		payment_vouchers = [x.get("reference_name") for x in pr.get("payments")]
 		self.assertCountEqual(payment_vouchers, [je2.name, pe2.name])
 
-	@change_settings(
+	@IntegrationTestCase.change_settings(
 		"Accounts Settings",
 		{
 			"allow_multi_currency_invoices_against_single_party_account": 1,
@@ -1574,6 +1592,341 @@ class TestPaymentReconciliation(FrappeTestCase):
 		)
 		self.assertEqual(len(pl_entries), 3)
 
+	def test_advance_payment_reconciliation_against_journal_for_customer(self):
+		frappe.db.set_value(
+			"Company",
+			self.company,
+			{
+				"book_advance_payments_in_separate_party_account": 1,
+				"default_advance_received_account": self.advance_receivable_account,
+				"reconcile_on_advance_payment_date": 0,
+			},
+		)
+		amount = 200.0
+		je = self.create_journal_entry(self.debit_to, self.bank, amount)
+		je.accounts[0].cost_center = self.main_cc.name
+		je.accounts[0].party_type = "Customer"
+		je.accounts[0].party = self.customer
+		je.accounts[1].cost_center = self.main_cc.name
+		je = je.save().submit()
+
+		pe = self.create_payment_entry(amount=amount).save().submit()
+
+		pr = self.create_payment_reconciliation()
+		pr.default_advance_account = self.advance_receivable_account
+		pr.get_unreconciled_entries()
+		self.assertEqual(len(pr.invoices), 1)
+		self.assertEqual(len(pr.payments), 1)
+		invoices = [invoice.as_dict() for invoice in pr.invoices]
+		payments = [payment.as_dict() for payment in pr.payments]
+		pr.allocate_entries(frappe._dict({"invoices": invoices, "payments": payments}))
+		pr.reconcile()
+
+		# Assert Ledger Entries
+		gl_entries = frappe.db.get_all(
+			"GL Entry",
+			filters={"voucher_no": pe.name, "is_cancelled": 0},
+		)
+		self.assertEqual(len(gl_entries), 4)
+		pl_entries = frappe.db.get_all(
+			"Payment Ledger Entry",
+			filters={"voucher_no": pe.name, "delinked": 0},
+		)
+		self.assertEqual(len(pl_entries), 3)
+
+		gl_entries = frappe.db.get_all(
+			"GL Entry",
+			filters={"voucher_no": pe.name, "is_cancelled": 0},
+			fields=["account", "voucher_no", "against_voucher", "debit", "credit"],
+			order_by="account, against_voucher, debit",
+		)
+		expected_gle = [
+			{
+				"account": self.advance_receivable_account,
+				"voucher_no": pe.name,
+				"against_voucher": pe.name,
+				"debit": 0.0,
+				"credit": amount,
+			},
+			{
+				"account": self.advance_receivable_account,
+				"voucher_no": pe.name,
+				"against_voucher": pe.name,
+				"debit": amount,
+				"credit": 0.0,
+			},
+			{
+				"account": self.debit_to,
+				"voucher_no": pe.name,
+				"against_voucher": je.name,
+				"debit": 0.0,
+				"credit": amount,
+			},
+			{
+				"account": self.bank,
+				"voucher_no": pe.name,
+				"against_voucher": None,
+				"debit": amount,
+				"credit": 0.0,
+			},
+		]
+		self.assertEqual(gl_entries, expected_gle)
+
+		pl_entries = frappe.db.get_all(
+			"Payment Ledger Entry",
+			filters={"voucher_no": pe.name},
+			fields=["account", "voucher_no", "against_voucher_no", "amount"],
+			order_by="account, against_voucher_no, amount",
+		)
+		expected_ple = [
+			{
+				"account": self.advance_receivable_account,
+				"voucher_no": pe.name,
+				"against_voucher_no": pe.name,
+				"amount": -amount,
+			},
+			{
+				"account": self.advance_receivable_account,
+				"voucher_no": pe.name,
+				"against_voucher_no": pe.name,
+				"amount": amount,
+			},
+			{
+				"account": self.debit_to,
+				"voucher_no": pe.name,
+				"against_voucher_no": je.name,
+				"amount": -amount,
+			},
+		]
+		self.assertEqual(pl_entries, expected_ple)
+
+	def test_advance_payment_reconciliation_against_journal_for_supplier(self):
+		self.supplier = make_supplier("_Test Supplier")
+		frappe.db.set_value(
+			"Company",
+			self.company,
+			{
+				"book_advance_payments_in_separate_party_account": 1,
+				"default_advance_paid_account": self.advance_payable_account,
+				"reconcile_on_advance_payment_date": 0,
+			},
+		)
+		amount = 200.0
+		je = self.create_journal_entry(self.creditors, self.bank, -amount)
+		je.accounts[0].cost_center = self.main_cc.name
+		je.accounts[0].party_type = "Supplier"
+		je.accounts[0].party = self.supplier
+		je.accounts[1].cost_center = self.main_cc.name
+		je = je.save().submit()
+
+		pe = self.create_payment_entry(amount=amount)
+		pe.payment_type = "Pay"
+		pe.party_type = "Supplier"
+		pe.paid_from = self.bank
+		pe.paid_to = self.creditors
+		pe.party = self.supplier
+		pe.save().submit()
+
+		pr = self.create_payment_reconciliation(party_is_customer=False)
+		pr.default_advance_account = self.advance_payable_account
+		pr.get_unreconciled_entries()
+		self.assertEqual(len(pr.invoices), 1)
+		self.assertEqual(len(pr.payments), 1)
+		invoices = [invoice.as_dict() for invoice in pr.invoices]
+		payments = [payment.as_dict() for payment in pr.payments]
+		pr.allocate_entries(frappe._dict({"invoices": invoices, "payments": payments}))
+		pr.reconcile()
+
+		# Assert Ledger Entries
+		gl_entries = frappe.db.get_all(
+			"GL Entry",
+			filters={"voucher_no": pe.name, "is_cancelled": 0},
+		)
+		self.assertEqual(len(gl_entries), 4)
+		pl_entries = frappe.db.get_all(
+			"Payment Ledger Entry",
+			filters={"voucher_no": pe.name, "delinked": 0},
+		)
+		self.assertEqual(len(pl_entries), 3)
+
+		gl_entries = frappe.db.get_all(
+			"GL Entry",
+			filters={"voucher_no": pe.name, "is_cancelled": 0},
+			fields=["account", "voucher_no", "against_voucher", "debit", "credit"],
+			order_by="account, against_voucher, debit",
+		)
+		expected_gle = [
+			{
+				"account": self.advance_payable_account,
+				"voucher_no": pe.name,
+				"against_voucher": pe.name,
+				"debit": 0.0,
+				"credit": amount,
+			},
+			{
+				"account": self.advance_payable_account,
+				"voucher_no": pe.name,
+				"against_voucher": pe.name,
+				"debit": amount,
+				"credit": 0.0,
+			},
+			{
+				"account": self.creditors,
+				"voucher_no": pe.name,
+				"against_voucher": je.name,
+				"debit": amount,
+				"credit": 0.0,
+			},
+			{
+				"account": self.bank,
+				"voucher_no": pe.name,
+				"against_voucher": None,
+				"debit": 0.0,
+				"credit": amount,
+			},
+		]
+		self.assertEqual(gl_entries, expected_gle)
+
+		pl_entries = frappe.db.get_all(
+			"Payment Ledger Entry",
+			filters={"voucher_no": pe.name},
+			fields=["account", "voucher_no", "against_voucher_no", "amount"],
+			order_by="account, against_voucher_no, amount",
+		)
+		expected_ple = [
+			{
+				"account": self.advance_payable_account,
+				"voucher_no": pe.name,
+				"against_voucher_no": pe.name,
+				"amount": -amount,
+			},
+			{
+				"account": self.advance_payable_account,
+				"voucher_no": pe.name,
+				"against_voucher_no": pe.name,
+				"amount": amount,
+			},
+			{
+				"account": self.creditors,
+				"voucher_no": pe.name,
+				"against_voucher_no": je.name,
+				"amount": -amount,
+			},
+		]
+		self.assertEqual(pl_entries, expected_ple)
+
+	def test_cr_note_payment_limit_filter(self):
+		transaction_date = nowdate()
+		amount = 100
+
+		for _ in range(6):
+			self.create_sales_invoice(qty=1, rate=amount, posting_date=transaction_date)
+			cr_note = self.create_sales_invoice(
+				qty=-1, rate=amount, posting_date=transaction_date, do_not_save=True, do_not_submit=True
+			)
+			cr_note.is_return = 1
+			cr_note = cr_note.save().submit()
+
+		pr = self.create_payment_reconciliation()
+
+		pr.get_unreconciled_entries()
+		self.assertEqual(len(pr.invoices), 6)
+		self.assertEqual(len(pr.payments), 6)
+		invoices = [x.as_dict() for x in pr.get("invoices")]
+		payments = [x.as_dict() for x in pr.get("payments")]
+		pr.allocate_entries(frappe._dict({"invoices": invoices, "payments": payments}))
+		pr.reconcile()
+
+		pr.get_unreconciled_entries()
+		self.assertEqual(pr.get("invoices"), [])
+		self.assertEqual(pr.get("payments"), [])
+
+		self.create_sales_invoice(qty=1, rate=amount, posting_date=transaction_date)
+		cr_note = self.create_sales_invoice(
+			qty=-1, rate=amount, posting_date=transaction_date, do_not_save=True, do_not_submit=True
+		)
+		cr_note.is_return = 1
+		cr_note = cr_note.save().submit()
+
+		# Limit should not affect in fetching the unallocated cr_note
+		pr.invoice_limit = 5
+		pr.payment_limit = 5
+		pr.get_unreconciled_entries()
+		self.assertEqual(len(pr.invoices), 1)
+		self.assertEqual(len(pr.payments), 1)
+
+	def test_reconciliation_on_closed_period_payment(self):
+		# create backdated fiscal year
+		first_fy_start_date = frappe.db.get_value("Fiscal Year", {"disabled": 0}, "min(year_start_date)")
+		prev_fy_start_date = add_years(first_fy_start_date, -1)
+		prev_fy_end_date = add_days(first_fy_start_date, -1)
+		create_fiscal_year(
+			company=self.company, year_start_date=prev_fy_start_date, year_end_date=prev_fy_end_date
+		)
+
+		# make journal entry for previous year
+		je_1 = frappe.new_doc("Journal Entry")
+		je_1.posting_date = add_days(prev_fy_start_date, 20)
+		je_1.company = self.company
+		je_1.user_remark = "test"
+		je_1.set(
+			"accounts",
+			[
+				{
+					"account": self.debit_to,
+					"cost_center": self.cost_center,
+					"party_type": "Customer",
+					"party": self.customer,
+					"debit_in_account_currency": 0,
+					"credit_in_account_currency": 1000,
+				},
+				{
+					"account": self.bank,
+					"cost_center": self.sub_cc.name,
+					"credit_in_account_currency": 0,
+					"debit_in_account_currency": 500,
+				},
+				{
+					"account": self.cash,
+					"cost_center": self.sub_cc.name,
+					"credit_in_account_currency": 0,
+					"debit_in_account_currency": 500,
+				},
+			],
+		)
+		je_1.submit()
+
+		# make period closing voucher
+		pcv = make_period_closing_voucher(
+			company=self.company, cost_center=self.cost_center, posting_date=prev_fy_end_date
+		)
+		pcv.reload()
+		# check if period closing voucher is completed
+		self.assertEqual(pcv.gle_processing_status, "Completed")
+
+		# make journal entry for active year
+		je_2 = self.create_journal_entry(
+			acc1=self.debit_to, acc2=self.income_account, amount=1000, posting_date=today()
+		)
+		je_2.accounts[0].party_type = "Customer"
+		je_2.accounts[0].party = self.customer
+		je_2.submit()
+
+		# process reconciliation on closed period payment
+		pr = self.create_payment_reconciliation(party_is_customer=True)
+		pr.from_invoice_date = pr.to_invoice_date = pr.from_payment_date = pr.to_payment_date = None
+		pr.get_unreconciled_entries()
+		invoices = [invoice.as_dict() for invoice in pr.invoices]
+		payments = [payment.as_dict() for payment in pr.payments]
+		pr.allocate_entries(frappe._dict({"invoices": invoices, "payments": payments}))
+		pr.reconcile()
+		je_1.reload()
+		je_2.reload()
+
+		# check whether the payment reconciliation is done on the closed period
+		self.assertEqual(pr.get("invoices"), [])
+		self.assertEqual(pr.get("payments"), [])
+
 
 def make_customer(customer_name, currency=None):
 	if not frappe.db.exists("Customer", customer_name):
@@ -1601,3 +1954,63 @@ def make_supplier(supplier_name, currency=None):
 		return supplier.name
 	else:
 		return supplier_name
+
+
+def create_fiscal_year(company, year_start_date, year_end_date):
+	fy_docname = frappe.db.exists(
+		"Fiscal Year", {"year_start_date": year_start_date, "year_end_date": year_end_date}
+	)
+	if not fy_docname:
+		fy_doc = frappe.get_doc(
+			{
+				"doctype": "Fiscal Year",
+				"year": f"{getdate(year_start_date).year}-{getdate(year_end_date).year}",
+				"year_start_date": year_start_date,
+				"year_end_date": year_end_date,
+				"companies": [{"company": company}],
+			}
+		).save()
+		return fy_doc
+	else:
+		fy_doc = frappe.get_doc("Fiscal Year", fy_docname)
+		if not frappe.db.exists("Fiscal Year Company", {"parent": fy_docname, "company": company}):
+			fy_doc.append("companies", {"company": company})
+			fy_doc.save()
+		return fy_doc
+
+
+def make_period_closing_voucher(company, cost_center, posting_date=None, submit=True):
+	from erpnext.accounts.doctype.account.test_account import create_account
+
+	parent_account = frappe.db.get_value(
+		"Account", {"company": company, "account_name": "Current Liabilities", "is_group": 1}, "name"
+	)
+	surplus_account = create_account(
+		account_name="Reserve and Surplus",
+		is_group=0,
+		company=company,
+		root_type="Liability",
+		report_type="Balance Sheet",
+		account_currency="INR",
+		parent_account=parent_account,
+		doctype="Account",
+	)
+	fy = get_fiscal_year(posting_date, company=company)
+	pcv = frappe.get_doc(
+		{
+			"doctype": "Period Closing Voucher",
+			"transaction_date": posting_date or today(),
+			"period_start_date": fy[1],
+			"period_end_date": fy[2],
+			"company": company,
+			"fiscal_year": fy[0],
+			"cost_center": cost_center,
+			"closing_account_head": surplus_account,
+			"remarks": "test",
+		}
+	)
+	pcv.insert()
+	if submit:
+		pcv.submit()
+
+	return pcv

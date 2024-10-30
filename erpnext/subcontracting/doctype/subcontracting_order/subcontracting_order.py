@@ -99,6 +99,12 @@ class SubcontractingOrder(SubcontractingController):
 			}
 		]
 
+	def onload(self):
+		self.set_onload(
+			"over_transfer_allowance",
+			frappe.db.get_single_value("Buying Settings", "over_transfer_allowance"),
+		)
+
 	def before_validate(self):
 		super().before_validate()
 
@@ -238,7 +244,7 @@ class SubcontractingOrder(SubcontractingController):
 				bom = (
 					frappe.db.get_value(
 						"Subcontracting BOM",
-						{"finished_good": item.item_code, "is_active": 1},
+						{"finished_good": item.name, "is_active": 1},
 						"finished_good_bom",
 					)
 					or item.default_bom
@@ -246,7 +252,7 @@ class SubcontractingOrder(SubcontractingController):
 
 				items.append(
 					{
-						"item_code": item.item_code,
+						"item_code": item.name,
 						"item_name": item.item_name,
 						"schedule_date": self.schedule_date,
 						"description": item.description,

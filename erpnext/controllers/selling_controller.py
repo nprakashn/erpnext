@@ -28,7 +28,7 @@ class SellingController(StockController):
 	def validate(self):
 		super().validate()
 		self.validate_items()
-		if not self.get("is_debit_note"):
+		if not (self.get("is_debit_note") or self.get("is_return")):
 			self.validate_max_discount()
 		self.validate_selling_price()
 		self.set_qty_as_per_stock_uom()
@@ -432,6 +432,9 @@ class SellingController(StockController):
 		if self.doctype not in ("Delivery Note", "Sales Invoice"):
 			return
 
+		allow_at_arms_length_price = frappe.get_cached_value(
+			"Stock Settings", None, "allow_internal_transfer_at_arms_length_price"
+		)
 		items = self.get("items") + (self.get("packed_items") or [])
 		for d in items:
 			if not frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
@@ -467,6 +470,16 @@ class SellingController(StockController):
 						raise_error_if_no_rate=False,
 					)
 
+				if (
+					not d.incoming_rate
+					and self.get("return_against")
+					and self.get("is_return")
+					and get_valuation_method(d.item_code) == "Moving Average"
+				):
+					d.incoming_rate = get_rate_for_return(
+						self.doctype, self.name, d.item_code, self.return_against, item_row=d
+					)
+
 				# For internal transfers use incoming rate as the valuation rate
 				if self.is_internal_transfer():
 					if self.doctype == "Delivery Note" or self.get("update_stock"):
@@ -478,6 +491,9 @@ class SellingController(StockController):
 							if d.incoming_rate != incoming_rate:
 								d.incoming_rate = incoming_rate
 						else:
+							if allow_at_arms_length_price:
+								continue
+
 							rate = flt(
 								flt(d.incoming_rate, d.precision("incoming_rate")) * d.conversion_factor,
 								d.precision("rate"),
@@ -535,7 +551,11 @@ class SellingController(StockController):
 		self.make_sl_entries(sl_entries)
 
 	def get_sle_for_source_warehouse(self, item_row):
-		serial_and_batch_bundle = item_row.serial_and_batch_bundle
+		serial_and_batch_bundle = (
+			item_row.serial_and_batch_bundle
+			if not self.is_internal_transfer() or self.docstatus == 1
+			else None
+		)
 		if serial_and_batch_bundle and self.is_internal_transfer() and self.is_return:
 			if self.docstatus == 1:
 				serial_and_batch_bundle = self.make_package_for_transfer(
@@ -627,7 +647,7 @@ class SellingController(StockController):
 		if self.doctype in ["Sales Order", "Quotation"]:
 			for item in self.items:
 				item.gross_profit = flt(
-					((item.base_rate - flt(item.valuation_rate)) * item.stock_qty),
+					((flt(item.stock_uom_rate) - flt(item.valuation_rate)) * item.stock_qty),
 					self.precision("amount", item),
 				)
 
@@ -684,7 +704,7 @@ class SellingController(StockController):
 			duplicate_items_msg = _("Item {0} entered multiple times.").format(frappe.bold(d.item_code))
 			duplicate_items_msg += "<br><br>"
 			duplicate_items_msg += _("Please enable {} in {} to allow same item in multiple rows").format(
-				frappe.bold("Allow Item to Be Added Multiple Times in a Transaction"),
+				frappe.bold(_("Allow Item to Be Added Multiple Times in a Transaction")),
 				get_link_to_form("Selling Settings", "Selling Settings"),
 			)
 			if frappe.db.get_value("Item", d.item_code, "is_stock_item") == 1:

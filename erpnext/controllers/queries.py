@@ -357,6 +357,7 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 	doctype = "Batch"
 	meta = frappe.get_meta(doctype, cached=True)
 	searchfields = meta.get_search_fields()
+	page_len = 30
 
 	batches = get_batches_from_stock_ledger_entries(searchfields, txt, filters, start, page_len)
 	batches.extend(get_batches_from_serial_and_batch_bundle(searchfields, txt, filters, start, page_len))
@@ -370,7 +371,7 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 
 
 def get_empty_batches(filters, start, page_len, filtered_batches=None, txt=None):
-	query_filter = {"item": filters.get("item_code")}
+	query_filter = {"item": filters.get("item_code"), "disabled": 0}
 	if txt:
 		query_filter["name"] = ("like", f"%{txt}%")
 
@@ -427,6 +428,7 @@ def get_batches_from_stock_ledger_entries(searchfields, txt, filters, start=0, p
 			& (stock_ledger_entry.batch_no.isnotnull())
 		)
 		.groupby(stock_ledger_entry.batch_no, stock_ledger_entry.warehouse)
+		.having(Sum(stock_ledger_entry.actual_qty) != 0)
 		.offset(start)
 		.limit(page_len)
 	)
@@ -477,6 +479,7 @@ def get_batches_from_serial_and_batch_bundle(searchfields, txt, filters, start=0
 			& (stock_ledger_entry.serial_and_batch_bundle.isnotnull())
 		)
 		.groupby(bundle.batch_no, bundle.warehouse)
+		.having(Sum(bundle.qty) != 0)
 		.offset(start)
 		.limit(page_len)
 	)

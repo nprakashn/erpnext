@@ -88,9 +88,18 @@ frappe.ui.form.on("BOM Creator", {
 					reqd: 1,
 					default: 1.0,
 				},
+				{ fieldtype: "Section Break" },
+				{
+					label: __("Routing"),
+					fieldtype: "Link",
+					fieldname: "routing",
+					options: "Routing",
+				},
 			],
 			primary_action_label: __("Create"),
 			primary_action: (values) => {
+				frm.events.validate_dialog_values(frm, values);
+
 				values.doctype = frm.doc.doctype;
 				frappe.db.insert(values).then((doc) => {
 					frappe.set_route("Form", doc.doctype, doc.name);
@@ -100,6 +109,18 @@ frappe.ui.form.on("BOM Creator", {
 
 		dialog.fields_dict.item_code.get_query = "erpnext.controllers.queries.item_query";
 		dialog.show();
+	},
+
+	validate_dialog_values(frm, values) {
+		if (values.track_semi_finished_goods) {
+			if (values.final_operation_time <= 0) {
+				frappe.throw(__("Operation Time must be greater than 0"));
+			}
+
+			if (!values.workstation && !values.workstation_type) {
+				frappe.throw(__("Either Workstation or Workstation Type is mandatory"));
+			}
+		}
 	},
 
 	set_queries(frm) {
@@ -120,6 +141,16 @@ frappe.ui.form.on("BOM Creator", {
 			return {
 				query: "erpnext.controllers.queries.item_query",
 			};
+		});
+
+		frm.set_query("workstation", (doc) => {
+			if (doc.workstation_type) {
+				return {
+					filters: {
+						workstation_type: doc.workstation_type,
+					},
+				};
+			}
 		});
 	},
 
@@ -212,7 +243,6 @@ erpnext.bom.BomConfigurator = class BomConfigurator extends erpnext.TransactionC
 			item.stock_qty = flt(item.qty * item.conversion_factor, precision("stock_qty", item));
 			refresh_field("stock_qty", item.name, item.parentfield);
 			this.toggle_conversion_factor(item);
-			this.frm.events.update_cost(this.frm);
 		}
 	}
 };
