@@ -6,12 +6,9 @@ import json
 from datetime import date
 
 import frappe
-from babel import Locale
 from frappe import _, throw
 from frappe.model.document import Document
 from frappe.utils import formatdate, getdate, today
-from holidays import country_holidays
-from holidays.utils import list_supported_countries
 
 
 class OverlapError(frappe.ValidationError):
@@ -19,9 +16,34 @@ class OverlapError(frappe.ValidationError):
 
 
 class HolidayList(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.setup.doctype.holiday.holiday import Holiday
+
+		color: DF.Color | None
+		country: DF.Autocomplete | None
+		from_date: DF.Date
+		holiday_list_name: DF.Data
+		holidays: DF.Table[Holiday]
+		subdivision: DF.Autocomplete | None
+		to_date: DF.Date
+		total_holidays: DF.Int
+		weekly_off: DF.Literal[
+			"", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+		]
+	# end: auto-generated types
+
 	def validate(self):
 		self.validate_days()
 		self.total_holidays = len(self.holidays)
+		self.validate_duplicate_date()
+		self.sort_holidays()
 
 	@frappe.whitelist()
 	def get_weekly_off_dates(self):
@@ -36,10 +58,10 @@ class HolidayList(Document):
 
 			self.append("holidays", {"description": _(self.weekly_off), "holiday_date": d, "weekly_off": 1})
 
-		self.sort_holidays()
-
 	@frappe.whitelist()
 	def get_supported_countries(self):
+		from holidays.utils import list_supported_countries
+
 		subdivisions_by_country = list_supported_countries()
 		countries = [
 			{"value": country, "label": local_country_name(country)}
@@ -52,6 +74,8 @@ class HolidayList(Document):
 
 	@frappe.whitelist()
 	def get_local_holidays(self):
+		from holidays import country_holidays
+
 		if not self.country:
 			throw(_("Please select a country"))
 
@@ -62,7 +86,7 @@ class HolidayList(Document):
 		for holiday_date, holiday_name in country_holidays(
 			self.country,
 			subdiv=self.subdivision,
-			years=[from_date.year, to_date.year],
+			years=list(range(from_date.year, to_date.year + 1)),
 			language=frappe.local.lang,
 		).items():
 			if holiday_date in existing_holidays:
@@ -74,8 +98,6 @@ class HolidayList(Document):
 			self.append(
 				"holidays", {"description": holiday_name, "holiday_date": holiday_date, "weekly_off": 0}
 			)
-
-		self.sort_holidays()
 
 	def sort_holidays(self):
 		self.holidays.sort(key=lambda x: getdate(x.holiday_date))
@@ -123,6 +145,18 @@ class HolidayList(Document):
 	def clear_table(self):
 		self.set("holidays", [])
 
+	def validate_duplicate_date(self):
+		unique_dates = []
+		for row in self.holidays:
+			if row.holiday_date in unique_dates:
+				frappe.throw(
+					_("Holiday Date {0} added multiple times").format(
+						frappe.bold(formatdate(row.holiday_date))
+					)
+				)
+
+			unique_dates.append(row.holiday_date)
+
 
 @frappe.whitelist()
 def get_events(start, end, filters=None):
@@ -160,13 +194,13 @@ def is_holiday(holiday_list, date=None):
 	if date is None:
 		date = today()
 	if holiday_list:
-		return bool(
-			frappe.db.exists("Holiday", {"parent": holiday_list, "holiday_date": date}, cache=True)
-		)
+		return bool(frappe.db.exists("Holiday", {"parent": holiday_list, "holiday_date": date}, cache=True))
 	else:
 		return False
 
 
 def local_country_name(country_code: str) -> str:
 	"""Return the localized country name for the given country code."""
-	return Locale.parse(frappe.local.lang).territories.get(country_code, country_code)
+	from babel import Locale
+
+	return Locale.parse(frappe.local.lang, sep="-").territories.get(country_code, country_code)
